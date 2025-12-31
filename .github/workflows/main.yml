@@ -1,0 +1,31 @@
+name: Mirror Autoware Image to Aliyun
+
+on:
+  workflow_dispatch: # 手动触发
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login to Aliyun ACR
+        uses: docker/login-action@v3
+        with:
+          registry: registry.cn-hangzhou.aliyuncs.com # 根据你的实际区域修改，如 cn-beijing
+          username: ${{ secrets.ALIYUN_USERNAME }}
+          password: ${{ secrets.ALIYUN_PASSWORD }}
+
+      - name: Pull, Tag and Push
+        run: |
+          # 1. 定义源镜像和目标镜像
+          # 请在 Autoware 官网确认最新的 tag，例如 universe-devel-cuda-20250101
+          SOURCE_IMAGE="ghcr.io/autowarefoundation/autoware-universe:latest-cuda"
+          TARGET_IMAGE="registry.cn-hangzhou.aliyuncs.com/你的命名空间/universe:latest-cuda"
+          
+          # 2. 拉取 (GitHub 服务器拉取 ghcr 很快)
+          docker pull $SOURCE_IMAGE
+          
+          # 3. 重命名 tag
+          docker tag $SOURCE_IMAGE $TARGET_IMAGE
+          
+          # 4. 推送到阿里云
+          docker push $TARGET_IMAGE
