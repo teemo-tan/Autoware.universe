@@ -6,18 +6,10 @@ on:
 jobs:
   mirror:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: read
-
+    # 不需要 permissions 了，因为我们要匿名拉取
+    
     steps:
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
+      # 1. 只登录阿里云 (目标仓库)
       - name: Login to Aliyun ACR
         uses: docker/login-action@v3
         with:
@@ -25,25 +17,31 @@ jobs:
           username: ${{ secrets.ALIYUN_USERNAME }}
           password: ${{ secrets.ALIYUN_PASSWORD }}
 
+      # 2. 清理空间 (必做)
       - name: Free Disk Space
         run: |
+          echo "Freeing disk space..."
           sudo rm -rf /usr/share/dotnet
           sudo rm -rf /usr/local/lib/android
           sudo rm -rf /opt/ghc
 
+      # 3. 拉取、打标、推送
       - name: Pull, Tag and Push
         run: |
-          # 尝试使用官方最常用的两个标签之一：
-          # 方案 A: latest-cuda (最新版)
-          # 方案 B: 如果你非要 20251226，尝试 universe-devel-cuda-20251226 (去掉 visualization)
+          # 修改源镜像为目前最稳健的 Humble 版本
+          # 如果这个能成功，说明链路通了，之后你再换成具体的日期版本
+          SOURCE_IMAGE="ghcr.io/autowarefoundation/autoware-universe:humble-latest-cuda"
+          TARGET_IMAGE="crpi-d3y3qro9com2p9eo.cn-hangzhou.personal.cr.aliyuncs.com/my-autoware-jocker/universe:humble-latest-cuda"
           
-          SOURCE_IMAGE="ghcr.io/autowarefoundation/autoware-universe:latest-cuda"
-          TARGET_IMAGE="crpi-d3y3qro9com2p9eo.cn-hangzhou.personal.cr.aliyuncs.com/my-autoware-jocker/universe:latest-cuda"
-          
-          echo "Pulling $SOURCE_IMAGE..."
+          echo "Step 1: Pulling from GHCR (Anonymous)..."
+          # 直接拉取，不登录 ghcr
           docker pull $SOURCE_IMAGE
           
+          echo "Step 2: Tagging..."
           docker tag $SOURCE_IMAGE $TARGET_IMAGE
           
-          echo "Pushing to Aliyun..."
-          docker push $TARGET_IMAGE
+          echo "Step 3: Pushing to Aliyun..."
+          # 增加重试逻辑
+          for i in {1..5}; do
+            docker push $TARGET_IMAGE && echo "Success!" && break || (echo "Retry $i..." && sleep 10)
+          done
