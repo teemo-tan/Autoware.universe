@@ -1,25 +1,23 @@
 name: Mirror Autoware Image to Aliyun
 
 on:
-  workflow_dispatch: # 手动触发
+  workflow_dispatch: 
 
 jobs:
   mirror:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: read # 允许读取 GitHub Packages
+      packages: read
 
     steps:
-      # 第一步：先登录 GitHub 官方镜像仓库 (解决 Pull 报错)
-      - name: Login to GitHub Container Registry
+      - name: Login to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # 第二步：登录你的个人阿里云仓库
       - name: Login to Aliyun ACR
         uses: docker/login-action@v3
         with:
@@ -27,28 +25,25 @@ jobs:
           username: ${{ secrets.ALIYUN_USERNAME }}
           password: ${{ secrets.ALIYUN_PASSWORD }}
 
-      # 第三步：清理磁盘空间 (重要！Autoware 镜像可能超过 20GB，不清理会 Push 失败)
       - name: Free Disk Space
         run: |
           sudo rm -rf /usr/share/dotnet
           sudo rm -rf /usr/local/lib/android
           sudo rm -rf /opt/ghc
-          sudo rm -rf "/usr/local/share/boost"
 
-      # 第四步：拉取、打标签并推送
       - name: Pull, Tag and Push
         run: |
-          SOURCE_IMAGE="ghcr.io/autowarefoundation/autoware-universe:universe-visualization-devel-20251226"
-          TARGET_IMAGE="crpi-d3y3qro9com2p9eo.cn-hangzhou.personal.cr.aliyuncs.com/my-autoware-jocker/universe:20251226-viz"
+          # 尝试使用官方最常用的两个标签之一：
+          # 方案 A: latest-cuda (最新版)
+          # 方案 B: 如果你非要 20251226，尝试 universe-devel-cuda-20251226 (去掉 visualization)
           
-          echo "Step 1: Pulling from GHCR..."
+          SOURCE_IMAGE="ghcr.io/autowarefoundation/autoware-universe:latest-cuda"
+          TARGET_IMAGE="crpi-d3y3qro9com2p9eo.cn-hangzhou.personal.cr.aliyuncs.com/my-autoware-jocker/universe:latest-cuda"
+          
+          echo "Pulling $SOURCE_IMAGE..."
           docker pull $SOURCE_IMAGE
           
-          echo "Step 2: Tagging..."
           docker tag $SOURCE_IMAGE $TARGET_IMAGE
           
-          echo "Step 3: Pushing to Aliyun..."
-          # 增加重试逻辑
-          for i in {1..3}; do
-            docker push $TARGET_IMAGE && echo "Success!" && break || (echo "Retry $i..." && sleep 10)
-          done
+          echo "Pushing to Aliyun..."
+          docker push $TARGET_IMAGE
