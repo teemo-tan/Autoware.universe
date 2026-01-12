@@ -10,7 +10,7 @@ jobs:
       - name: Login to Aliyun ACR
         uses: docker/login-action@v3
         with:
-          registry: registry.cn-hangzhou.aliyuncs.com # 根据你的实际区域修改，如 cn-beijing
+          registry: crpi-d3y3qro9com2p9eo.cn-hangzhou.personal.cr.aliyuncs.com # 根据你的实际区域修改，如 cn-beijing
           username: ${{ secrets.ALIYUN_USERNAME }}
           password: ${{ secrets.ALIYUN_PASSWORD }}
 
@@ -19,7 +19,7 @@ jobs:
           # 1. 定义源镜像和目标镜像
           # 请在 Autoware 官网确认最新的 tag，例如 universe-devel-cuda-20250101
           SOURCE_IMAGE="ghcr.io/autowarefoundation/autoware-universe:universe-visualization-devel-20251226"
-          TARGET_IMAGE="registry.cn-hangzhou.aliyuncs.com/my-autoware-jocker/universe:20251226-viz"
+          TARGET_IMAGE="crpi-d3y3qro9com2p9eo.cn-hangzhou.personal.cr.aliyuncs.com/my-autoware-jocker/universe:20251226-viz"
           
           # 2. 拉取 (GitHub 服务器拉取 ghcr 很快)
           docker pull $SOURCE_IMAGE
