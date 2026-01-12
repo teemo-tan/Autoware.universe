@@ -35,7 +35,7 @@ jobs:
       - name: Pull, Tag and Push
         run: |
           # 依然使用最稳妥的 latest-cuda，一旦成功你可以随意换 tag
-          SOURCE_IMAGE="ghcr.io/autowarefoundation/autoware-universe:latest-cuda"
+          SOURCE_IMAGE="ghcr.io/autowarefoundation/autoware:universe-vehicle-system-devel-20241223"
           TARGET_IMAGE="crpi-d3y3qro9com2p9eo.cn-hangzhou.personal.cr.aliyuncs.com/my-autoware-jocker/universe:latest-cuda"
           
           echo "Step 1: Pulling from GHCR (Authenticated)..."
