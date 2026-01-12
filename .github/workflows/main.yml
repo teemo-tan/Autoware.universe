@@ -6,34 +6,49 @@ on:
 jobs:
   mirror:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read # 允许读取 GitHub Packages
+
     steps:
+      # 第一步：先登录 GitHub 官方镜像仓库 (解决 Pull 报错)
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 第二步：登录你的个人阿里云仓库
       - name: Login to Aliyun ACR
         uses: docker/login-action@v3
         with:
-          registry: crpi-d3y3qro9com2p9eo.cn-hangzhou.personal.cr.aliyuncs.com # 根据你的实际区域修改，如 cn-beijing
+          registry: crpi-d3y3qro9com2p9eo.cn-hangzhou.personal.cr.aliyuncs.com
           username: ${{ secrets.ALIYUN_USERNAME }}
           password: ${{ secrets.ALIYUN_PASSWORD }}
 
+      # 第三步：清理磁盘空间 (重要！Autoware 镜像可能超过 20GB，不清理会 Push 失败)
+      - name: Free Disk Space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+
+      # 第四步：拉取、打标签并推送
       - name: Pull, Tag and Push
         run: |
           SOURCE_IMAGE="ghcr.io/autowarefoundation/autoware-universe:universe-visualization-devel-20251226"
           TARGET_IMAGE="crpi-d3y3qro9com2p9eo.cn-hangzhou.personal.cr.aliyuncs.com/my-autoware-jocker/universe:20251226-viz"
           
-          echo "Checking Docker version..."
-          docker version
+          echo "Step 1: Pulling from GHCR..."
+          docker pull $SOURCE_IMAGE
           
-          echo "Step 1: Pulling from GitHub (GHCR)..."
-          if ! docker pull $SOURCE_IMAGE; then
-            echo "Error: Failed to pull image from GHCR"
-            exit 1
-          fi
-          
-          echo "Step 2: Tagging image..."
+          echo "Step 2: Tagging..."
           docker tag $SOURCE_IMAGE $TARGET_IMAGE
           
           echo "Step 3: Pushing to Aliyun..."
-          if ! docker push $TARGET_IMAGE; then
-            echo "Error: Failed to push image to Aliyun. Check if the repository 'universe' exists in namespace 'my-autoware-jocker'."
-            exit 1
-          fi
-          echo "Successfully mirrored!"
+          # 增加重试逻辑
+          for i in {1..3}; do
+            docker push $TARGET_IMAGE && echo "Success!" && break || (echo "Retry $i..." && sleep 10)
+          done
