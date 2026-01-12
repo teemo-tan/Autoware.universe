@@ -16,16 +16,24 @@ jobs:
 
       - name: Pull, Tag and Push
         run: |
-          # 1. 定义源镜像和目标镜像
-          # 请在 Autoware 官网确认最新的 tag，例如 universe-devel-cuda-20250101
           SOURCE_IMAGE="ghcr.io/autowarefoundation/autoware-universe:universe-visualization-devel-20251226"
           TARGET_IMAGE="crpi-d3y3qro9com2p9eo.cn-hangzhou.personal.cr.aliyuncs.com/my-autoware-jocker/universe:20251226-viz"
           
-          # 2. 拉取 (GitHub 服务器拉取 ghcr 很快)
-          docker pull $SOURCE_IMAGE
+          echo "Checking Docker version..."
+          docker version
           
-          # 3. 重命名 tag
+          echo "Step 1: Pulling from GitHub (GHCR)..."
+          if ! docker pull $SOURCE_IMAGE; then
+            echo "Error: Failed to pull image from GHCR"
+            exit 1
+          fi
+          
+          echo "Step 2: Tagging image..."
           docker tag $SOURCE_IMAGE $TARGET_IMAGE
           
-          # 4. 推送到阿里云
-          docker push $TARGET_IMAGE
+          echo "Step 3: Pushing to Aliyun..."
+          if ! docker push $TARGET_IMAGE; then
+            echo "Error: Failed to push image to Aliyun. Check if the repository 'universe' exists in namespace 'my-autoware-jocker'."
+            exit 1
+          fi
+          echo "Successfully mirrored!"
